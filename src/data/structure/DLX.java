@@ -9,10 +9,10 @@ import java.util.List;
 import java.util.Stack;
 import java.util.stream.Collectors;
 
-public class AlgorithmX {
+public class DLX {
 
     public static void main(String[] args) {
-        InputStream is = AlgorithmX.class.getClassLoader().getResourceAsStream("./matrix.txt");
+        InputStream is = DLX.class.getClassLoader().getResourceAsStream("./matrix.txt");
         BufferedReader reader = new BufferedReader(new InputStreamReader(is));
         List<String> strings = reader.lines().collect(Collectors.toList());
         Iterator<String> iterator = strings.iterator();
@@ -30,16 +30,31 @@ public class AlgorithmX {
         }
         DanceLink dlx = new DanceLink(matrix);
         System.out.println(dlx);
-        System.out.println("===============");
-        dlx.search();
+        System.out.println("====================================================");
+        dlx.dance();
         dlx.printSolution();
-        System.out.println("===============");
+        System.out.println("====================================================");
         System.out.println(dlx);
+    }
+
+    static class HCell extends Cell {
+        int size;
+
+        //HCell left;
+        //HCell right;
+        HCell(int col) {
+            super(-1, col);
+        }
+
+        @Override
+        public String toString() {
+            return "{" + col + "; " + size + "}";
+        }
     }
 
     static class Cell {
         Cell up, down, left, right;
-        Cell head;
+        HCell head;
         int row;
         int col;
 
@@ -55,8 +70,8 @@ public class AlgorithmX {
     }
 
     static class DanceLink {
-        Cell root;
-        Cell[] headers;
+        HCell root;
+        HCell[] headers;
         private Stack<Cell> solution = new Stack<>();
 
         DanceLink(int[][] matrix) {
@@ -67,13 +82,13 @@ public class AlgorithmX {
         }
 
         void initHeader(int m) {
-            root = new Cell(-1, -1);
-            headers = new Cell[m];
-            headers[0] = new Cell(-1, 0);
+            root = new HCell(-1);
+            headers = new HCell[m];
+            headers[0] = new HCell(0);
             root.right = headers[0];
             headers[0].left = root;
             for (int i = 1; i < m; i++) {
-                headers[i] = new Cell(-1, i);
+                headers[i] = new HCell(i);
                 headers[i].left = headers[i - 1];
                 headers[i - 1].right = headers[i];
             }
@@ -94,6 +109,7 @@ public class AlgorithmX {
                     if (matrix[i][j] != 0) { // 1
                         Cell cell = new Cell(i, j);
                         cell.head = headers[j];
+                        headers[j].size++;
                         cell.up = cells[j];
                         cells[j].down = cell;
                         cur.right = cell;
@@ -119,17 +135,27 @@ public class AlgorithmX {
 
         public void printSolution() {
             for (Cell cell : solution) {
-                System.out.print(cell.row + " ");
+                System.out.print("[" + cell.col + ":" + cell.row + "]");
             }
             System.out.println();
         }
 
-        public void search() {
+        private Cell chooseColumn() {
+            HCell best = (HCell) root.right;
+            for (HCell right = (HCell) root.right; right != root; right = (HCell) right.right) {
+                if (right.size < best.size) {
+                    best = right;
+                }
+            }
+            return best;
+        }
+
+        public void dance() {
             if (root.right == root) {
                 printSolution();
             } else {
                 // column selection
-                Cell column = root.right;
+                Cell column = chooseColumn();
                 cover(column);
                 for (Cell down = column.down; down != column; down = down.down) {
                     solution.push(down);
@@ -138,7 +164,7 @@ public class AlgorithmX {
                         cover(right.head);
                     }
 
-                    search();
+                    dance();
 
                     solution.pop();
 
@@ -158,6 +184,7 @@ public class AlgorithmX {
             for (Cell down = column.down; down != column; down = down.down) {
                 for (Cell right = down.right; right != down; right = right.right) {
                     // unlink up & down
+                    right.head.size--;
                     right.up.down = right.down;
                     right.down.up = right.up;
                 }
@@ -167,12 +194,13 @@ public class AlgorithmX {
         public void uncover(Cell column) {
             for (Cell up = column.up; up != column; up = up.up) {
                 for (Cell left = up.left; left != up; left = left.left) {
-                    // unlink up & down
+                    // link up & down
+                    left.head.size++;
                     left.up.down = left;
                     left.down.up = left;
                 }
             }
-            // unlink left & right
+            // link left & right
             column.right.left = column;
             column.left.right = column;
         }
@@ -180,6 +208,10 @@ public class AlgorithmX {
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
+            for (HCell hCell : headers) {
+                sb.append(hCell);
+            }
+            sb.append("\n");
             for (Cell header = root.right; header != root; header = header.right) {
                 for (Cell cell = header.down; cell != header; cell = cell.down) {
                     sb.append(cell);
